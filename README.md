@@ -87,86 +87,89 @@ Follow **[Ceres Installation](http://ceres-solver.org/installation.html)**.
 
 **[onnxruntime-linux-x64-gpu-1.16.3](https://github.com/microsoft/onnxruntime/releases/download/v1.16.3/onnxruntime-linux-x64-gpu-1.16.3.tgz)**
 
-### 2.5 **install libraries to the specified path**
-
-**If you want to install the third-party library in the specified path, you can follow the steps below**
+### 2.5 **One-time setup (host)**
 
 ```bash
-mkdir build
-cd build
-cmake -D CMAKE_INSTALL_PREFIX="/some/where/local"  ..
-make -j4
-make install
+sudo apt install -y nvidia-docker2
+sudo usermod -aG docker $(whoami)
+sudo systemctl restart docker
+
+sudo apt update
+sudo apt install -y curl
+mkdir -p ~/.docker/cli-plugins
+
+# Download latest v2 Compose binary (adjust version if needed)
+curl -SL https://github.com/docker/compose/releases/download/v2.23.1/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+
+# Make it executable
+chmod +x ~/.docker/cli-plugins/docker-compose
+
 ```
 
-# 3 Create a ROS1 workspace
+# 3 Usage with Docker
+
+### 3.1 Clone project
 
 ```bash
-mkdir -p ~/catkin_ws/src
-cd ~/catkin_ws/src/
-catkin_init_workspace
-cd ~/catkin_ws
-catkin_make
-echo "source ~/catkin_ws/devel/setup.bash" >> ~/.bash
-source ~/.bashrc
+git clone https://github.com/luohongk/SuperVINS.git
+mkdir -p SuperVINS-build SuperVINS-devel
 ```
 
-# 4 How does it work?
-
-### 4.1 Clone project
-
-```bash
-  cd ~/catkin_ws/src
-  git clone https://github.com/luohongk/SuperVINS.git
-```
-
-### 4.2 Data download
+### 3.2 Data download
 
 You can download the specified data set yourself, or you can use download_data.sh to download the data set. The download method is as follows.
 
 ```bash
-cd ~/catkin_ws/src/SuperVINS
+cd SuperVINS
 chmod +x download_data.sh
 ./download_data.sh
 ```
 
-### 4.3 Path change
-
-* file:vins_estimator\CMakeLists.txt , supervins_loop_fusion\CMakeLists.txt , camera_models\CMakeLists.txt
+### 3.3 Start container
 
 ```bash
-change
-set(ONNXRUNTIME_ROOTDIR "/home/lhk/Thirdparty/onnxruntime")
-find_package(Ceres REQUIRED PATHS "/home/lhk/Thirdparty/Ceres")
-to
-set(ONNXRUNTIME_ROOTDIR "your onnxruntime path")
-find_package(Ceres REQUIRED PATHS "you Ceres path")
+docker build -t supervins:ros .
+docker compose up -d
 ```
 
-### 4.4 Compile project
+### 3.4 Docker setup (Enter container)
+
+```bash
+xhost +local:docker
+docker compose exec supervins bash
+```
+
+### 3.5 Compile project
 
 ```bash
 cd ~/catkin_ws
 catkin_make
 ```
 
-### 4.5 Run the project
+### 3.6 Run the project
 
 ```bash
+source devel/setup.bash
+
 roslaunch supervins supervins_rviz.launch
+
 rosrun supervins supervins_node ~/catkin_ws/src/SuperVINS/config/euroc/euroc_mono_imu_config.yaml
-(SuperVINS1.0 currently does not support loop detection)rosrun supervins_loop_fusion supervins_loop_fusion_node ~/catkin_ws/src/SuperVINS/config/euroc/euroc_mono_imu_config.yaml
-rosbag play ~/catkin_ws/src/SuperVINS/data/V2_01_easy.bag
+
+rosrun supervins_loop_fusion supervins_loop_fusion_node ~/catkin_ws/src/SuperVINS/config/euroc/euroc_mono_imu_config.yaml
+
+rosparam set /use_sim_time true
+rosbag play --clock /data/vicon_room2/V2_01_easy/V2_01_easy.bag
 ```
 
-### 4.6 Train vocabulary
+### 3.7 Train vocabulary
 
 ```bash
-Please refer to the official repository of DBoW3 yourself. This project does not provide
-https://github.com/rmsalinas/DBow3
+rosrun supervins_loop_fusion train_superpoint_vocab ~/catkin_ws/src/SuperVINS/supervins_estimator/weights_dpl/superpoint.onnx /data/vicon_room2/V2_01_easy/mav0/cam0/data /data/vicon_room2/V2_02_medium/mav0/cam0/data /data/vicon_room2/V2_03_difficult/mav0/cam0/data
+
+mv superpoint1.yml.gz ~/catkin_ws/src/SuperVINS/supervins_loop_fusion/src/ThirdParty/Voc
 ```
 
-### 4.7 Paper citation method
+### 3.8 Paper citation method
 
 ```bash
 @article{luo2025supervins,

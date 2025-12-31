@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.14)
 project(camera_models)
 
 set(CMAKE_BUILD_TYPE "Release")
@@ -16,10 +16,28 @@ include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(OpenCV REQUIRED)
 
-# set(EIGEN_INCLUDE_DIR "/usr/local/include/eigen3")
-# find_package(Ceres REQUIRED)
-find_package(Ceres REQUIRED PATHS "/home/lhk/Thirdparty/Ceres")
-include_directories(${CERES_INCLUDE_DIRS})
+include(FetchContent)
+
+# Eigen
+FetchContent_Declare(
+    Eigen
+    GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
+    GIT_TAG         3.4.0
+    GIT_SHALLOW     TRUE
+    GIT_PROGRESS    TRUE
+)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(EIGEN_BUILD_DOC OFF)
+set(EIGEN_BUILD_PKGCONFIG OFF)
+set(EIGEN_TEST_CXX11 ON)
+set(EIGEN_HAS_CXX11_MATH ON)
+list(APPEND external Eigen)
+list(APPEND libs Eigen3::Eigen)
+
+# Ceres
+find_package(Ceres REQUIRED)
+
+FetchContent_MakeAvailable(${external})
 
 
 catkin_package(
@@ -66,5 +84,5 @@ add_library(camera_models
     src/gpl/gpl.cc
     src/gpl/EigenQuaternionParameterization.cc)
 
-target_link_libraries(Calibrations ${Boost_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
-target_link_libraries(camera_models ${Boost_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
+target_link_libraries(Calibrations ${Boost_LIBRARIES} ${OpenCV_LIBS} Ceres::ceres)
+target_link_libraries(camera_models ${Boost_LIBRARIES} ${OpenCV_LIBS} Ceres::ceres)

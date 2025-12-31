@@ -14,7 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
     roslib
     )
 find_package(Ceres REQUIRED)
-find_package(Ceres REQUIRED PATHS "/home/lhk/Thirdparty/Ceres")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(Eigen3)
 
@@ -24,9 +23,7 @@ option(onnxruntime_USE_TENSORRT "Build with TensorRT support" OFF)
 option(LIBPNG_ROOTDIR "libpng root dir")
 option(ONNXRUNTIME_ROOTDIR "onnxruntime root dir")
 
-set(ONNXRUNTIME_ROOTDIR "/home/lhk/Thirdparty/onnxruntime")
-include_directories("${ONNXRUNTIME_ROOTDIR}/include")
-link_directories("${ONNXRUNTIME_ROOTDIR}/lib")
+find_library(ONNXRUNTIME_LIB onnxruntime REQUIRED)
 
 find_package(JPEG)
 find_package(PNG)
@@ -76,6 +73,29 @@ add_executable(supervins_loop_fusion_node
     )
 get_filename_component(PROJECT_SOURCE_DIR_ABS "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 target_compile_definitions(supervins_loop_fusion_node PRIVATE PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR_ABS}")
-target_link_libraries(supervins_loop_fusion_node ${catkin_LIBRARIES}  ${OpenCV_LIBS} ${CERES_LIBRARIES}  ${OpenCV_LIBRARIES} onnxruntime) 
+target_link_libraries(supervins_loop_fusion_node ${catkin_LIBRARIES} ${OpenCV_LIBS} Ceres::ceres ${OpenCV_LIBRARIES} ${ONNXRUNTIME_LIB}) 
 
 
+# Tool to train SuperPoint Vocabulary
+include_directories(
+    ${PROJECT_SOURCE_DIR}/../supervins_estimator/src/featureTracker
+    ${PROJECT_SOURCE_DIR}/../supervins_estimator/src/featureTracker/ort_include
+    ${PROJECT_SOURCE_DIR}/../supervins_estimator/src/estimator
+    ${PROJECT_SOURCE_DIR}/../supervins_estimator/src/utility
+)
+
+add_executable(train_superpoint_vocab
+    src/ThirdParty/Voc/train_superpoint_vocab.cpp
+    ${PROJECT_SOURCE_DIR}/../supervins_estimator/src/featureTracker/extractor_matcher_dpl.cpp
+    ${PROJECT_SOURCE_DIR}/../supervins_estimator/src/featureTracker/transform_dpl.cpp
+    ${DBOW3_SOURCE}
+    src/ThirdParty/DUtils/Random.cpp
+    src/ThirdParty/DUtils/Timestamp.cpp
+    src/ThirdParty/DVision/BRIEF.cpp
+)
+
+target_link_libraries(train_superpoint_vocab
+    ${catkin_LIBRARIES}
+    ${OpenCV_LIBS}
+    ${ONNXRUNTIME_LIB}
+)

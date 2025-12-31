@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  supervins:
+    image: supervins:ros
+    container_name: supervins
+    runtime: nvidia
+    network_mode: host
+    privileged: true
+    ipc: host
+
+    environment:
+      DISPLAY: ${DISPLAY}
+      XDG_RUNTIME_DIR: /tmp/runtime-root
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: graphics,utility,compute
+      __GLX_VENDOR_LIBRARY_NAME: nvidia
+      QT_X11_NO_MITSHM: "1"
+      ROS_MASTER_URI: http://localhost:11311
+      ROS_HOSTNAME: localhost
+      ROS_LOG_DIR: /root/.ros/log
+
+    volumes:
+      # X11
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+      # SuperVINS source
+      - ./:/root/catkin_ws/src/SuperVINS:rw
+
+      # Persist build artifacts
+      - /tmp/SuperVINS-build:/root/catkin_ws/build:rw
+      - /tmp/SuperVINS-devel:/root/catkin_ws/devel:rw
+
+      # Dataset
+      - /dados/euroc:/data:ro
+
+    working_dir: /root/catkin_ws
+    stdin_open: true
+    tty: true
+
+    command: >
+      bash -c "
+        source /opt/ros/noetic/setup.bash &&
+        source /root/catkin_ws/devel/setup.bash 2>/dev/null || true &&
+        exec bash
+      "

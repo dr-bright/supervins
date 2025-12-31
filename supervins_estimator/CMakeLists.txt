@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.14)
 project(supervins)
 
 set(CMAKE_BUILD_TYPE "Release")
@@ -18,10 +18,12 @@ find_package(catkin REQUIRED COMPONENTS
     image_transport)
 
 find_package(OpenCV REQUIRED)
-find_package(Ceres REQUIRED PATHS "/home/lhk/Thirdparty/Ceres")
-set(ONNXRUNTIME_ROOTDIR "/home/lhk/Thirdparty/onnxruntime")
-include_directories("${ONNXRUNTIME_ROOTDIR}/include")
-link_directories("${ONNXRUNTIME_ROOTDIR}/lib")
+
+# Ceres
+find_package(Ceres REQUIRED)
+
+# ONNX Runtime
+find_library(ONNXRUNTIME_LIB onnxruntime REQUIRED)
 
 include_directories(${PROJECT_SOURCE_DIR}/featureTracker/ort_include/)
 include_directories(${PROJECT_SOURCE_DIR}/src/estimator/)
@@ -56,7 +58,7 @@ add_library(supervins_lib
     src/featureTracker/feature_tracker_dpl.cpp
     src/featureTracker/extractor_matcher_dpl.cpp
     src/featureTracker/transform_dpl.cpp)
-target_link_libraries(supervins_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES} onnxruntime)
+target_link_libraries(supervins_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} Ceres::ceres ${ONNXRUNTIME_LIB})
 
 
 get_filename_component(PROJECT_SOURCE_DIR_ABS "${CMAKE_SOURCE_DIR}" ABSOLUTE)
