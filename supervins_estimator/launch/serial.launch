@@ -1,0 +1,15 @@
+<launch>
+    <arg name="bag_path" />
+    <arg name="config_path" default="$(find supervins)/../config/euroc/euroc_mono_imu_config.yaml" />
+    <arg name="bag_start" default="0.0"/>
+    <arg name="bag_durr" default="-1.0"/>
+    <arg name="bag_end" default="0.0"/>
+    <node name="supervins_estimator" pkg="supervins" type="serial"
+        output="screen" args="$(arg config_path) $(arg bag_path)" required="true">
+        <param name="bag_start"                type="double" value="$(arg bag_start)" />
+        <param name="bag_durr"                 type="double"    value="$(arg bag_durr)" />
+        <param name="bag_end"                 type="double"    value="$(arg bag_end)" />
+    </node>
+    <!-- play the dataset -->
+    <!-- <node pkg="rosbag" type="play" name="rosbag" args="-r $(arg rate) $(arg bag_path)" required="true"/> -->
+</launch>

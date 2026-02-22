@@ -15,7 +15,9 @@ find_package(catkin REQUIRED COMPONENTS
     tf
     cv_bridge
     camera_models
-    image_transport)
+    image_transport
+    rosbag
+)
 
 find_package(OpenCV REQUIRED)
 
@@ -64,7 +66,11 @@ target_link_libraries(supervins_lib ${catkin_LIBRARIES} ${OpenCV_LIBS} Ceres::ce
 get_filename_component(PROJECT_SOURCE_DIR_ABS "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 add_executable(supervins_node src/supervins_main.cpp)
 target_compile_definitions(supervins_node PRIVATE PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR_ABS}")
-target_link_libraries(supervins_node supervins_lib) 
+target_link_libraries(supervins_node supervins_lib)
+
+add_executable(serial src/supervins_serial.cpp)
+target_compile_definitions(serial PRIVATE PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR_ABS}")
+target_link_libraries(serial supervins_lib)
 
 # add_executable(kitti_odom_test src/KITTIOdomTest.cpp )
 # target_link_libraries(kitti_odom_test vins_lib -pthread) 

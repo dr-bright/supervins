@@ -1,0 +1,24 @@
+<launch>
+    <!-- requires ov_eval from openvins to be present in the workspace -->
+
+    <!-- what ros bag to play -->
+    <arg name="bag_path"    default="/data/euroc_mav/V1_01_easy/V1_01_easy.bag" />
+    <arg name="save_path"   default="/data/euroc_mav/V1_01_easy/gt.txt" />
+    <arg name="topic"       default="/vicon/firefly_sbx/firefly_sbx" />
+    <arg name="type"        default="TransformStamped" />
+    <arg name="rate"        default="4.0" />
+
+
+    <!-- record the trajectory -->
+    <node name="recorder_estimate" pkg="ov_eval" type="pose_to_file" output="screen" required="true">
+        <param name="topic"      type="str" value="$(arg topic)" />
+        <param name="topic_type" type="str" value="$(arg type)" />
+        <param name="output"     type="str" value="$(arg save_path)" />
+    </node>
+
+
+    <!-- play the dataset -->
+    <node pkg="rosbag" type="play" name="rosbag" args="-r $(arg rate) $(arg bag_path)" required="true"/>
+
+
+</launch>

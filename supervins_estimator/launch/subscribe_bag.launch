@@ -1,0 +1,9 @@
+<launch>
+    <arg name="bag_path" />
+    <arg name="config_path" default="$(find supervins)/../config/euroc/euroc_mono_imu_config.yaml" />
+    <arg name="rate" default="1.0" />
+    <node name="supervins_estimator" pkg="supervins" type="supervins_node"
+        output="screen" args="$(arg config_path)" required="true"/>
+    <!-- play the dataset -->
+    <node pkg="rosbag" type="play" name="rosbag" args="-r $(arg rate) $(arg bag_path)" required="true"/>
+</launch>
