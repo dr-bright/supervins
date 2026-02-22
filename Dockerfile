@@ -44,7 +44,7 @@ RUN git clone https://github.com/ceres-solver/ceres-solver.git /tmp/ceres-solver
     cd /tmp/ceres-solver && git checkout 2.1.0 && \
     mkdir build && cd build && \
     cmake .. -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF -DBUILD_BENCHMARKS=OFF && \
-    make -j$(nproc) && make install && \
+    make -j4 && make install && \
     cd / && rm -rf /tmp/ceres-solver
 
 # -----------------------------
@@ -54,7 +54,7 @@ RUN mkdir -p /root/catkin_ws/src
 WORKDIR /root/catkin_ws
 
 # Source ROS and build workspace
-RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin_make"
+RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin build -j4"
 
 # -----------------------------
 # XDG runtime fix for RViz
