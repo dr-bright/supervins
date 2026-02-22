@@ -272,8 +272,8 @@ int main(int argc, char **argv)
     if(argc != 2)
     {
         printf("please intput: rosrun supervins supervins_node [config file] \n"
-               "for example: upervins supervins_node"
-               "~/catkin_ws/src/SuperVINS/config/euroc/euroc_mono_imu_config.yaml \n");
+               "    for example: supervins supervins_node "
+               "./config/euroc/euroc_mono_imu_config.yaml\n");
         return 1;
     }
 
@@ -286,10 +286,10 @@ int main(int argc, char **argv)
 
     // 路径配置
     // Path configuration
-    std::string project_source_dir = PROJECT_SOURCE_DIR;
-    extractor_weight_global_path = project_source_dir + "/" + extractor_weight_relative_path;
-    matcher_weight_global_path = project_source_dir + "/" + matcher_weight_relative_path;
-    VINS_RESULT_PATH = project_source_dir + "/" + VINS_RESULT_PATH;
+    // std::string project_source_dir = PROJECT_SOURCE_DIR;
+    // extractor_weight_global_path = project_source_dir + "/" + extractor_weight_relative_path;
+    // matcher_weight_global_path = project_source_dir + "/" + matcher_weight_relative_path;
+    // VINS_RESULT_PATH = project_source_dir + "/" + VINS_RESULT_PATH;
 
     //给estimator设置参数，因为一些参数可能被优化，所以可能会重置参数，注意，如果开启了多线程模式，在setParameter()中就已经将状态估计函数放入一个独立线程运行了
     //Set parameters for the estimator. Because some parameters may be optimized, the parameters may be reset. Note that if the multi-thread mode is turned on, the state estimation function has been put into an independent thread to run in set parameter().
@@ -331,7 +331,4 @@ int main(int argc, char **argv)
     ros::spin();
 
     return 0;
-
-    
-    
 }

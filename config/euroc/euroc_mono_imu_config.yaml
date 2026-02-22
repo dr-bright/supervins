@@ -13,6 +13,7 @@ cam0_calib: "cam0_mei.yaml"
 cam1_calib: "cam1_mei.yaml"
 image_width: 752
 image_height: 480
+focal_length: 460.0
 
 # Extrinsic parameter between IMU and Camera.
 estimate_extrinsic: 1   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
@@ -38,7 +39,7 @@ max_cnt: 150
 min_dist: 10
 
 #matcher parameters
-matche_score_threshold: 0.7
+matcher_score_threshold: 0.7
 ransacReprojThreshold: 0.5
 
 freq: 10                # frequence (Hz) of publish tracking result. At least 10Hz for good estimation. If set 0, the frequence will be same as raw image 
@@ -62,17 +63,14 @@ g_norm: 9.81007     # gravity magnitude
 estimate_td: 0                      # online estimate time offset between camera and imu
 td: 0.0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
 
-# Path to vio output results
-output_path: "SuperVINS/supervins_estimator/vio_output"
-
 #loop closure parameters
 load_previous_pose_graph: 0        # load and reuse previous pose graph; load from 'pose_graph_save_path'
-pose_graph_save_path: "SuperVINS/supervins_estimator/vio_output" # save and load path
-save_image: 1                   # save image in pose graph for visualization prupose; you can close this function by setting 0 
+save_image: 0                   # save image in pose graph for visualization prupose; you can close this function by setting 0 
 
+output_dir: "../../supervins_estimator/vio_output"
 #deep learning feature points weights
-extractor_weight_path: "SuperVINS/supervins_estimator/weights_dpl/superpoint.onnx"
-matcher_weight_path: "SuperVINS/supervins_estimator/weights_dpl/superpoint_lightglue_fused_cpu.onnx" 
-
+pose_graph_save_path: "../../supervins_estimator/vio_output" # save and load path
+extractor_weight_path: "../../supervins_estimator/weights_dpl/superpoint.onnx"
+matcher_weight_path: "../../supervins_estimator/weights_dpl/superpoint_lightglue_fused_cpu.onnx" 
 # Bag of Words path
-voc_relative_path: "SuperVINS/supervins_loop_fusion/src/ThirdParty/Voc/superpoint1.yml.gz" 
+voc_relative_path: "../../supervins_loop_fusion/src/ThirdParty/Voc/superpoint1.yml.gz" 

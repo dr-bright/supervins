@@ -175,7 +175,7 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
     TicToc featureTrackerTime;
     // 右目图像缺失的话，就只追踪左目图像
     // If the right eye image is missing, only the left eye image will be tracked.
-    if (_img1.empty())
+    if (_img1.empty() || !STEREO)
     {
         // track image with deeplearning methods
         featureFrame = featureTracker.trackImage_dpl(t, _img); 
@@ -184,7 +184,7 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
         // Save the descriptor as cv::mat
         vector<pair<cv::Point2f, vector<float>>> kptAndDescriptors = featureTracker.cur_dplpts_descriptors;
 
-        std::cout << std::fixed << std::setprecision(9) << t << std::endl;
+        // std::cout << std::fixed << std::setprecision(9) << t << std::endl;
 
         // 先初始化描述子，cv::Mat形式
         // First initialize the descriptor, in the form of cv::mat
@@ -255,16 +255,18 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
     }
     else
     {
-        mBuf.lock();
-        // 插入的是[时间戳,特征帧]，后面会用到
-        // Insert [timestamp, feature frame], which will be used later.
-        featureBuf.push(make_pair(t, featureFrame)); 
-        mBuf.unlock();
-        TicToc processTime;
+        if (inputImageCnt % 2 == 0) {
+            mBuf.lock();
+            // 插入的是[时间戳,特征帧]，后面会用到
+            // Insert [timestamp, feature frame], which will be used later.
+            featureBuf.push(make_pair(t, featureFrame)); 
+            mBuf.unlock();
+            TicToc processTime;
 
-        // 没开启多线程模式就要手动运行processMeasurements()
-        // If multi-threading mode is not enabled, process measurements() must be run manually.
-        processMeasurements();
+            // 没开启多线程模式就要手动运行processMeasurements()
+            // If multi-threading mode is not enabled, process measurements() must be run manually.
+            processMeasurements();
+        }
     }
 }
 
@@ -412,19 +414,14 @@ void Estimator::processMeasurements()
 
             // 结束计时
             auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> duration = end - start; // 计算持续时间
-
-            // 输出时间到控制台
-            // std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
-
-            // 打开文件进行保存（以追加模式打开）
-            std::ofstream outFile("time_consumption/backend_optimization.txt", std::ios::app);
-            if (outFile.is_open()) {
-                outFile << duration.count() <<std::endl; // 写入执行时间
-                outFile.close(); // 关闭文件
-            } else {
-                std::cerr << "Unable to open file" << std::endl; // 错误处理
-            }
+            std::chrono::duration<double> duration = end - start;
+            // std::ofstream outFile("time_consumption/backend_optimization.txt", std::ios::app);
+            // if (outFile.is_open()) {
+            //     outFile << duration.count() <<std::endl;
+            //     outFile.close();
+            // } else {
+            //     std::cerr << "Unable to open file" << std::endl;
+            // }
 
             prevTime = curTime;
 
@@ -683,7 +680,8 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         if (!MULTIPLE_THREAD)
         {
             featureTracker.removeOutliers(removeIndex);
-            predictPtsInNextFrame();
+            predictPtsInNextFrame(); ///< this stupidity kills the pipeline and was never indended to be used
+            // well, the singlethreaded pipeline is dead anyway so whatever
         }
 
         ROS_DEBUG("solver costs: %fms", t_solve.toc());
@@ -720,7 +718,8 @@ bool Estimator::initialStructure()
     TicToc t_sfm;
     // check imu observibility
     // 先检查IMU可观性，实际上就是检查IMU是否有充分运动（激励）但这段代码算了半天最后也没起作用，要不咱直接看下面sfm的代码吧
-    {
+    // ok, pls, dont run the code that does nothing next time folks, why do I have to cut it out myself?
+    if (false) {
         map<double, ImageFrame>::iterator frame_it;
         Vector3d sum_g;
         // 遍历现有的所有帧
@@ -744,7 +743,7 @@ bool Estimator::initialStructure()
         // ROS_WARN("IMU variation %f!", var);
         if (var < 0.25)
         {
-            ROS_INFO("IMU excitation not enough!");
+            ROS_WARN("IMU excitation not enough!");
             // return false;
         }
     }
@@ -776,7 +775,7 @@ bool Estimator::initialStructure()
     // 在滑窗内找一帧质量好的作为参考帧，计算其与滑窗内最后一帧的相对位姿
     if (!relativePose(relative_R, relative_T, l))
     {
-        ROS_INFO("Not enough features or parallax; Move device around");
+        ROS_WARN("Not enough features or parallax; Move device around");
         return false;
     }
     // 创建一个sfm器，利用刚才找到的第l帧和滑窗最后一帧的相对位姿进行全局sfm
@@ -785,7 +784,7 @@ bool Estimator::initialStructure()
                        relative_R, relative_T,
                        sfm_f, sfm_tracked_points))
     {
-        ROS_DEBUG("global SFM failed!");
+        ROS_WARN("global SFM failed!");
         // 全局sfm失败了，将最老的帧丢弃
         marginalization_flag = MARGIN_OLD;
         return false;
@@ -841,14 +840,13 @@ bool Estimator::initialStructure()
         cv::Mat K = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
         if (pts_3_vector.size() < 6)
         {
-            cout << "pts_3_vector size " << pts_3_vector.size() << endl;
-            ROS_DEBUG("Not enough points for solve pnp !");
+            ROS_WARN_STREAM("Not enough points for solve pnp, pts_3_vector size " << pts_3_vector.size() << "\n");
             return false;
         }
         // 求解PnP，这里可以看出，有一帧要是没求解出来，整个initialStructure就算失败了
         if (!cv::solvePnP(pts_3_vector, pts_2_vector, K, D, rvec, t, 1))
         {
-            ROS_DEBUG("solve pnp fail!");
+            ROS_WARN("solve pnp fail!");
             return false;
         }
         cv::Rodrigues(rvec, r);
@@ -867,7 +865,7 @@ bool Estimator::initialStructure()
         return true;
     else
     {
-        ROS_INFO("misalign visual structure with IMU");
+        ROS_WARN("misalign visual structure with IMU");
         return false;
     }
 }
@@ -883,7 +881,7 @@ bool Estimator::visualInitialAlign()
     bool result = VisualIMUAlignment(all_image_frame, Bgs, g, x);
     if (!result)
     {
-        ROS_DEBUG("solve g failed!");
+        ROS_WARN("solve g failed!");
         return false;
     }
 
@@ -965,10 +963,10 @@ bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
             }
             average_parallax = 1.0 * sum_parallax / int(corres.size());
             // 平均视差大于一定数值，使用motion_estimator求解第i帧和第WINDOW_SIZE帧(就是滑窗最后一帧)之间的位姿变换
-            if (average_parallax * 460 > 30 && m_estimator.solveRelativeRT(corres, relative_R, relative_T))
+            if (average_parallax * FOCAL_LENGTH > 30 && m_estimator.solveRelativeRT(corres, relative_R, relative_T, FOCAL_LENGTH))
             {
                 l = i; // 计算成功了！
-                ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * 460, l);
+                ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * FOCAL_LENGTH, l);
                 return true;
             }
         }

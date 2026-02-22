@@ -222,7 +222,6 @@ void KeyFrame::FundmantalMatrixRANSAC(const std::vector<cv::Point2f> &matched_2d
 		vector<cv::Point2f> tmp_cur(n), tmp_old(n);
 		for (int i = 0; i < (int)matched_2d_cur_norm.size(); i++)
 		{
-			double FOCAL_LENGTH = 460.0;
 			double tmp_x, tmp_y;
 			tmp_x = FOCAL_LENGTH * matched_2d_cur_norm[i].x + COL / 2.0;
 			tmp_y = FOCAL_LENGTH * matched_2d_cur_norm[i].y + ROW / 2.0;
@@ -262,13 +261,13 @@ void KeyFrame::PnPRANSAC(const vector<cv::Point2f> &matched_2d_old_norm,
 	TicToc t_pnp_ransac;
 
 	if (CV_MAJOR_VERSION < 3)
-		solvePnPRansac(matched_3d, matched_2d_old_norm, K, D, rvec, t, true, 100, 10.0 / 460.0, 100, inliers);
+		solvePnPRansac(matched_3d, matched_2d_old_norm, K, D, rvec, t, true, 100, 10.0 / FOCAL_LENGTH, 100, inliers);
 	else
 	{
 		if (CV_MINOR_VERSION < 2)
-			solvePnPRansac(matched_3d, matched_2d_old_norm, K, D, rvec, t, true, 100, sqrt(10.0 / 460.0), 0.99, inliers);
+			solvePnPRansac(matched_3d, matched_2d_old_norm, K, D, rvec, t, true, 100, sqrt(10.0 / FOCAL_LENGTH), 0.99, inliers);
 		else
-			solvePnPRansac(matched_3d, matched_2d_old_norm, K, D, rvec, t, true, 100, 10.0 / 460.0, 0.99, inliers);
+			solvePnPRansac(matched_3d, matched_2d_old_norm, K, D, rvec, t, true, 100, 10.0 / FOCAL_LENGTH, 0.99, inliers);
 	}
 
 	for (int i = 0; i < (int)matched_2d_old_norm.size(); i++)

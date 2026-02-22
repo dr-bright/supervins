@@ -213,7 +213,13 @@ void FeatureTrackerDPL::match_features_dpl(cv::Mat prev_img_, cv::Mat cur_img_, 
     // std::cout<<"start find fundamental matrix"<<std::endl;
     // std::cout<<"points1 size = "<<points1.size()<<std::endl;
     // std::cout<<"points2 size = "<<points2.size()<<std::endl;
-    cv::Mat fundamentalMatrix = cv::findFundamentalMat(points1, points2, cv::FM_RANSAC, ransacReprojThreshold, 0.99, inliersMask);
+    cv::Mat fundamentalMatrix;
+    try {
+        fundamentalMatrix = cv::findFundamentalMat(points1, points2, cv::FM_RANSAC, ransacReprojThreshold, 0.99, inliersMask);
+    } catch(...) {
+        ROS_ERROR_STREAM(__FILE__ << ":" << __LINE__ << " - Unable to find fundamental mat");
+        throw;
+    }
 
     // std::cout<<"end find fundamental matrix"<<std::endl;
 
@@ -232,6 +238,7 @@ void FeatureTrackerDPL::match_features_dpl(cv::Mat prev_img_, cv::Mat cur_img_, 
 
 void FeatureTrackerDPL::match_with_predictions_dpl(cv::Mat prev_img_, cv::Mat cur_img_, vector<pair<cv::Point2f, vector<float>>> &prev_dplpts_descriptors_, vector<pair<cv::Point2f, vector<float>>> &cur_dplpts_descriptors_, vector<cv::Point2f> &predict_pts_, vector<cv::Point2f> &cur_pts_, vector<pair<int, int>> &result_matches,double &ransacReprojThreshold)
 {
+    ROS_INFO_STREAM("match_with_predictions_dpl invoked");
     int n_pre = prev_dplpts_descriptors_.size();
     int n_cur = cur_dplpts_descriptors_.size();
     vector<cv::Point2f> prev_dplpts, cur_dplpts;
@@ -267,14 +274,25 @@ void FeatureTrackerDPL::match_with_predictions_dpl(cv::Mat prev_img_, cv::Mat cu
     vector<cv::Point2f> prev_dplpts_normalized = FeatureMatcherDPL->pre_process(prev_dplpts, prev_img_.rows, prev_img_.cols);
     vector<cv::Point2f> cur_dplpts_normalized = FeatureMatcherDPL->pre_process(cur_dplpts, cur_img_.rows, cur_img_.cols);
 
+    ROS_INFO_STREAM("prev_dplpts_size " << prev_dplpts_normalized.size());
+    ROS_INFO_STREAM("cur_dplpts_size " << cur_dplpts_normalized.size());
+
     vector<pair<int, int>> matches = FeatureMatcherDPL->match_featurepoints(prev_dplpts_normalized, cur_dplpts_normalized, prev_descriptors, cur_descriptors);
+
+    ROS_INFO_STREAM("matches size " << matches.size());
     // RANSAC 参数
     // double ransacReprojThreshold = 0.06; // RANSAC 阈值
     // cout<<"RANSAC threshold = "<<ransacReprojThreshold<<endl;
 
     // 使用 RANSAC 进行模型估计
     std::vector<uchar> inliersMask;
-    cv::Mat fundamentalMatrix = cv::findFundamentalMat(prev_dplpts_normalized, cur_dplpts_normalized, cv::FM_RANSAC, ransacReprojThreshold, 0.99, inliersMask);
+    cv::Mat fundamentalMatrix;
+    try {
+        fundamentalMatrix = cv::findFundamentalMat(prev_dplpts_normalized, cur_dplpts_normalized, cv::FM_RANSAC, ransacReprojThreshold, 0.99, inliersMask);
+    } catch(...) {
+        ROS_ERROR_STREAM(__FILE__ << ":" << __LINE__ << " - Unable to find fundamental mat");
+        throw;
+    }
 
     // 获取内点
     std::vector<cv::Point2f> inlierPrevPts, inlierCurPts;
@@ -388,7 +406,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTrackerDPL::trac
     cur_dplpts_descriptors.clear();
 
     // 开始计时
-    cout<<"extract feature time"<<endl;
+    // cout << "extract feature time" <<endl;
     auto start = std::chrono::high_resolution_clock::now();
 
     // 使用深度学习进行特征点和描述子提取
@@ -400,18 +418,10 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTrackerDPL::trac
     std::chrono::duration<double> duration = end - start; // 计算持续时间
 
     // 输出时间到控制台
-    std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
+    // std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
 
     // 打开文件进行保存（以追加模式打开）
-    std::ofstream outFile("time_consumption/feature_extraction_matching.txt", std::ios::app);
-    if (outFile.is_open()) {
-        outFile << duration.count() << ","; // 写入执行时间
-        outFile.close(); // 关闭文件
-    } else {
-        std::cerr << "Unable to open file" << std::endl; // 错误处理
-    }
-
-    cout<<"save success"<<endl;
+    // cout<<"save success"<<endl;
 
     // 一些变量容器
     // some variables containers
@@ -423,20 +433,20 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTrackerDPL::trac
     vector<int> temp_ids;
     vector<int> temp_track_cnt;
 
-    cout << cur_pts.size() << " points extracted in current frame originally" << endl;
+    // cout << cur_pts.size() << " points extracted in current frame originally" << endl;
 
     // 上一帧特征点不能为空，否则没法追踪
     // The feature points of the previous frame cannot be empty, otherwise they cannot be tracked.\
 
-    ROS_INFO_STREAM("prev_pts.size() = " << prev_pts.size());
+    ROS_DEBUG_STREAM("prev_pts.size() = " << prev_pts.size());
     
     if (prev_pts.size() > 0)
     {
         TicToc t_o;
         vector<pair<int, int>> matches;
 
-        std::cout<<"hasPrediction = "<<hasPrediction<<std::endl;
-        if (hasPrediction)
+        // std::cout<<"hasPrediction = "<<hasPrediction<<std::endl;
+        if (/*hasPrediction*/ false)
         {
             // 开始计时
             auto start = std::chrono::high_resolution_clock::now();
@@ -461,15 +471,6 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTrackerDPL::trac
 
             // 输出时间到控制台
             // std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
-
-            // 打开文件进行保存（以追加模式打开）
-            std::ofstream outFile("time_consumption/feature_extraction_matching.txt", std::ios::app);
-            if (outFile.is_open()) {
-                outFile << duration.count() << std::endl;
-                outFile.close();
-            } else {
-                std::cerr << "Unable to open file" << std::endl;
-            }
         }
         else
         {
@@ -492,23 +493,17 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTrackerDPL::trac
             // use deep-learning extractor to match feature points
             match_features_dpl(prev_img, cur_img, prev_dplpts_descriptors, cur_dplpts_descriptors, matches,ransacReprojThreshold);
 
-            ROS_INFO_STREAM("matches.size() = " << matches.size());
+            // ROS_INFO_STREAM("matches.size() = " << matches.size());
+            // std::cout << "matches.size() = " << matches.size();
 
             // 结束计时
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> duration = end - start; // 计算持续时间
 
             // 输出时间到控制台
-            std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
+            // std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
 
             // 打开文件进行保存（以追加模式打开）
-            std::ofstream outFile("duration.txt", std::ios::app);
-            if (outFile.is_open()) {
-                outFile << duration.count() <<std::endl; // 写入执行时间
-                outFile.close(); // 关闭文件
-            } else {
-                std::cerr << "Unable to open file" << std::endl; // 错误处理
-            }
         }
 
         // the number of matched points
@@ -607,7 +602,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTrackerDPL::trac
     for (size_t i = 0; i < cur_pts.size(); i++)
         prevLeftPtsMap[ids[i]] = cur_pts[i];
 
-    ROS_INFO_STREAM("start save ");
+    ROS_DEBUG_STREAM("start save");
     
 
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> featureFrame; // 要准备返回特征帧了：key值为featureid，value值为map：key值为相机id，value值为7x1向量，分别存放[归一化平面x,归一化平面y,1,像素平面x,像素平面y,归一化平面速度x,归一化平面速度y]
@@ -651,6 +646,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTrackerDPL::trac
             Eigen::Matrix<double, 7, 1> xyz_uv_velocity;
             xyz_uv_velocity << x, y, z, p_u, p_v, velocity_x, velocity_y;
             featureFrame[feature_id].emplace_back(camera_id, xyz_uv_velocity); // 把右目数据推入
+            // ROS_WARN_STREAM("camera_id 1 was pushed into the feature queue DPL");
         }
     }
 

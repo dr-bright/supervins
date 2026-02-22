@@ -43,6 +43,7 @@ std::vector<std::string> CAM_NAMES;
 int MAX_CNT;
 int MIN_DIST;
 double F_THRESHOLD;
+double FOCAL_LENGTH;
 int SHOW_TRACK;
 int FLOW_BACK;
 
@@ -88,6 +89,9 @@ void readParameters(std::string config_file)
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
 
+    int pn = config_file.find_last_of('/');
+    std::string config_dir = config_file.substr(0, pn);
+
     fsSettings["image0_topic"] >> IMAGE0_TOPIC;
     fsSettings["image1_topic"] >> IMAGE1_TOPIC;
     MAX_CNT = fsSettings["max_cnt"];
@@ -114,10 +118,14 @@ void readParameters(std::string config_file)
     SOLVER_TIME = fsSettings["max_solver_time"];
     NUM_ITERATIONS = fsSettings["max_num_iterations"];
     MIN_PARALLAX = fsSettings["keyframe_parallax"];
+    FOCAL_LENGTH = fsSettings["focal_length"];
     MIN_PARALLAX = MIN_PARALLAX / FOCAL_LENGTH;
 
-    fsSettings["output_path"] >> OUTPUT_FOLDER;
-    VINS_RESULT_PATH = OUTPUT_FOLDER + "/vio.csv";
+    fsSettings["output_dir"] >> OUTPUT_FOLDER;
+    if (!OUTPUT_FOLDER.size() || OUTPUT_FOLDER[0] != '/') {
+        OUTPUT_FOLDER = config_dir + "/" + OUTPUT_FOLDER;
+    }
+    VINS_RESULT_PATH = OUTPUT_FOLDER + "/traj.csv";
     std::cout << "result path " << VINS_RESULT_PATH << std::endl;
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);
     fout.close();
@@ -128,14 +136,14 @@ void readParameters(std::string config_file)
         ROS_WARN("have no prior about extrinsic param, calibrate extrinsic param");
         RIC.push_back(Eigen::Matrix3d::Identity());
         TIC.push_back(Eigen::Vector3d::Zero());
-        EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameter.csv";
+        EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameters.csv";
     }
     else
     {
         if (ESTIMATE_EXTRINSIC == 1)
         {
             ROS_WARN(" Optimize extrinsic param around initial guess!");
-            EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameter.csv";
+            EX_CALIB_RESULT_PATH = OUTPUT_FOLDER + "/extrinsic_parameters.csv";
         }
         if (ESTIMATE_EXTRINSIC == 0)
             ROS_WARN(" fix extrinsic param ");
@@ -157,12 +165,12 @@ void readParameters(std::string config_file)
         assert(0);
     }
 
-    int pn = config_file.find_last_of('/');
-    std::string configPath = config_file.substr(0, pn);
-
     std::string cam0Calib;
     fsSettings["cam0_calib"] >> cam0Calib;
-    std::string cam0Path = configPath + "/" + cam0Calib;
+    std::string cam0Path = config_dir + "/" + cam0Calib;
+    if (cam0Calib.size() && cam0Calib[0] == '/') {
+        cam0Path = cam0Calib;
+    }
     CAM_NAMES.push_back(cam0Path);
 
     if (NUM_OF_CAM == 2)
@@ -170,7 +178,10 @@ void readParameters(std::string config_file)
         STEREO = 1;
         std::string cam1Calib;
         fsSettings["cam1_calib"] >> cam1Calib;
-        std::string cam1Path = configPath + "/" + cam1Calib;
+        std::string cam1Path = config_dir + "/" + cam1Calib;
+        if (cam1Calib.size() && cam1Calib[0] == '/') {
+            cam1Path = cam1Calib;
+        }
         // printf("%s cam1 path\n", cam1Path.c_str() );
         CAM_NAMES.push_back(cam1Path);
 
@@ -206,8 +217,18 @@ void readParameters(std::string config_file)
 
     // new codes to read deep-learning parameters
     fsSettings["extractor_weight_path"] >> extractor_weight_relative_path;
+    if (!extractor_weight_relative_path.size() || extractor_weight_relative_path[0] != '/') {
+        extractor_weight_global_path = config_dir + "/" + extractor_weight_relative_path;
+    } else {
+        extractor_weight_global_path = extractor_weight_relative_path;
+    }
     fsSettings["matcher_weight_path"] >> matcher_weight_relative_path;
-    MATCHER_THRESHOLD = fsSettings["matche_score_threshold"];
+    if (!matcher_weight_relative_path.size() || matcher_weight_relative_path[0] != '/') {
+        matcher_weight_global_path = config_dir + "/" + matcher_weight_relative_path;
+    } else {
+        matcher_weight_global_path = matcher_weight_relative_path;
+    }
+    MATCHER_THRESHOLD = fsSettings["matcher_score_threshold"];
     ransacReprojThreshold= fsSettings["ransacReprojThreshold"];
 
     fsSettings.release();
